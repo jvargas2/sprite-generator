@@ -8,9 +8,10 @@ import os
 import sys
 
 
-#divides a tileset into seperate tiles
 def extract(img_name, tsize, output_dir):
-
+	"""
+	divides a tileset into seperate tiles
+	"""
 	try:
 		#get the original image information
 		img = Image.open(img_name)
@@ -40,6 +41,7 @@ def extract(img_name, tsize, output_dir):
 				if is_empty(tile):
 					continue
 
+				#save the new tile to the output directory specified
 				tile_name = output_dir + "/" + os.path.splitext(img_name)[0] + "_" + str(index) + ".png"
 				#print(tile_name)
 				tile.save(tile_name)
@@ -50,13 +52,19 @@ def extract(img_name, tsize, output_dir):
 	except IOError:
 		pass
 
-#checks if an image is completely transparent
 def is_empty(img):
+	"""
+	checks if an image is completely transparent
+	"""
+
 	#print(img.getcolors())
 	return img.getcolors()[0][1][3] == 0
 
 def main():
 	#grab the parameters
+	if len(sys.argv) < 2:
+		sys.exit("Invalid number of arguments!\n\t`python3 tileExtractor IMAGE_PATH (TILE_SIZE) (OUTPUT_DIRECTORY)`")
+
 	IMG_NAME = sys.argv[1]
 	TILE_SIZE = 16
 	DIR = "tiles"
@@ -66,6 +74,7 @@ def main():
 
 	if len(sys.argv) > 3:
 		DIR = sys.argv[3]
+
 
 	extract(IMG_NAME, TILE_SIZE, DIR)
 
