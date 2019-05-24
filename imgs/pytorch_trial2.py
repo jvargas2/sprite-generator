@@ -8,14 +8,14 @@ import torch.utils.data
 from utils import Logger
 
 # root directory for dataset
-dataroot = "tiles"
+dataroot = "maps"
 
 # Batch size during training
-batch_size = 128
+batch_size = 32
 
 # Spatial size of training images. All images will be resized to this
 #   size using a transformer.
-image_size = 16
+image_size = 64
 
 # Number of channels in the training images. For color images this is 3
 nc = 3
@@ -23,42 +23,51 @@ nc = 3
 # Size of z latent vector (i.e. size of generator input)
 nz = 100
 
-# Size of feature maps in generator
-ngf = 128
-
-# Size of feature maps in discriminator
-ndf = 128
-
 # Number of training epochs
 num_epochs = 200
 
 # Learning rate for optimizers
 lr = 0.0002
 
-# Beta1 hyperparam for Adam optimizers
-beta1 = 0.5
-
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 0
 
+
+def highest2(x):
+	n = 1
+	while(pow(2,n) <= x):
+		n+=1
+	return pow(2,n)
+
+
+# the largest layer size
+layer_size = highest2(image_size*image_size*nc);
+
+print(str(image_size) + " - " + str(layer_size))
 
 # We can use an image folder dataset the way we have it setup.
 # Create the dataset
 
 grayCompose = transforms.Compose([
+							   transforms.Resize([image_size, image_size]),
 							   transforms.Grayscale(num_output_channels=1),
 							   transforms.ToTensor(),
 							   transforms.Normalize([0.5], [0.5]),
 						   ])
 
 colorCompose = transforms.Compose([
+							   transforms.Resize([image_size, image_size]),
 							   transforms.ToTensor(),
 							   transforms.Normalize([0.5,0.5,0.5], [0.5,0.5,0.5]),
 						   ])
 
-
-dataset = dset.ImageFolder(root=dataroot,
+if(nc == 3):
+	dataset = dset.ImageFolder(root=dataroot,
 						   transform=colorCompose)
+else:
+	dataset = dset.ImageFolder(root=dataroot,
+						   transform=grayCompose)
+
 # Create the dataloader
 data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
 										 shuffle=True)
@@ -71,26 +80,26 @@ class DiscriminatorNet(torch.nn.Module):
 	"""
 	def __init__(self):
 		super(DiscriminatorNet, self).__init__()
-		n_features = 768
+		n_features = image_size*image_size*nc
 		n_out = 1
 		
 		self.hidden0 = nn.Sequential( 
-			nn.Linear(n_features, 128),
+			nn.Linear(n_features, layer_size),
 			nn.LeakyReLU(0.2),
 			nn.Dropout(0.3)
 		)
 		self.hidden1 = nn.Sequential(
-			nn.Linear(128, 64),
+			nn.Linear(layer_size, int(layer_size/2)),
 			nn.LeakyReLU(0.2),
 			nn.Dropout(0.3)
 		)
 		self.hidden2 = nn.Sequential(
-			nn.Linear(64, 32),
+			nn.Linear(int(layer_size/2), int(layer_size/4)),
 			nn.LeakyReLU(0.2),
 			nn.Dropout(0.3)
 		)
 		self.out = nn.Sequential(
-			torch.nn.Linear(32, n_out),
+			torch.nn.Linear(int(layer_size/4), n_out),
 			torch.nn.Sigmoid()
 		)
 
@@ -108,24 +117,24 @@ class GeneratorNet(torch.nn.Module):
 	"""
 	def __init__(self):
 		super(GeneratorNet, self).__init__()
-		n_features = 100
-		n_out = 768
+		n_features = nz
+		n_out = image_size*image_size*nc
 		
 		self.hidden0 = nn.Sequential(
-			nn.Linear(n_features, 32),
+			nn.Linear(n_features, int(layer_size/4)),
 			nn.LeakyReLU(0.2)
 		)
 		self.hidden1 = nn.Sequential(            
-			nn.Linear(32, 64),
+			nn.Linear(int(layer_size/4), int(layer_size/2)),
 			nn.LeakyReLU(0.2)
 		)
 		self.hidden2 = nn.Sequential(
-			nn.Linear(64, 128),
+			nn.Linear(int(layer_size/2), layer_size),
 			nn.LeakyReLU(0.2)
 		)
 		
 		self.out = nn.Sequential(
-			nn.Linear(128, n_out),
+			nn.Linear(layer_size, n_out),
 			nn.Tanh()
 		)
 
@@ -141,18 +150,21 @@ class GeneratorNet(torch.nn.Module):
 
 
 def images_to_vectors(images):
-	return images.view(images.size(0), 768)
+	return images.view(images.size(0), image_size*image_size*nc)
 
 def vectors_to_images(vectors):
-	return vectors.view(vectors.size(0), 3, 16, 16)
+	return vectors.view(vectors.size(0), nc, image_size, image_size)
 
 
 def noise(size):
 	'''
 	Generates a 1-d vector of gaussian sampled random values
 	'''
-	n = Variable(torch.randn(size, 100))
+	n = Variable(torch.randn(size, nz))
 	return n
+
+
+
 
 
 discriminator = DiscriminatorNet()
@@ -218,13 +230,13 @@ num_test_samples = 16
 test_noise = noise(num_test_samples)
 
 # Create logger instance
-logger = Logger(model_name='DCGAN', data_name='TILES_Color')
+logger = Logger(model_name='DCGAN', data_name='MAPS_COLOR')
 num_batches = len(data_loader)
 
 for epoch in range(num_epochs):
 	for n_batch, (real_batch,_) in enumerate(data_loader):
 		N = real_batch.size(0)
-
+		print(N)
 		"""
 		print(real_batch.nelement())
 		print(real_batch.size(0))
