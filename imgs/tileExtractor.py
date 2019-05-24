@@ -12,6 +12,7 @@ def extract(img_name, tsize, output_dir):
 	"""
 	divides a tileset into seperate tiles
 	"""
+
 	try:
 		#get the original image information
 		img = Image.open(img_name)
@@ -30,7 +31,7 @@ def extract(img_name, tsize, output_dir):
 		for i in range(int(ph)):
 			for j in range(int(pw)):
 				#grab the tile
-				cy = i*tsize
+				cy = i*tsize 
 				cx = j*tsize
 				area = (cx, cy, cx+tsize, cy+tsize)
 				
@@ -47,9 +48,11 @@ def extract(img_name, tsize, output_dir):
 				tile.save(tile_name)
 
 				index += 1
-				
+		
+
 
 	except IOError:
+		print("ERROR: Image not found!")
 		pass
 
 def is_empty(img):
@@ -76,7 +79,17 @@ def main():
 		DIR = sys.argv[3]
 
 
-	extract(IMG_NAME, TILE_SIZE, DIR)
+	#check if name is directory or individual file
+	if os.path.isfile(IMG_NAME):
+		print("Extracting from file: " + IMG_NAME)
+		extract(IMG_NAME, TILE_SIZE, DIR)
+	elif os.path.isdir(IMG_NAME):
+		print("Extracting from directory: " + IMG_NAME)
+		os.chdir(IMG_NAME)
+		for f in os.listdir(IMG_NAME): 
+			if os.path.isfile(f):
+				print("\tExtracting from file: " + f)
+				extract(f, TILE_SIZE, DIR)
 
 if __name__ == "__main__":
 	main()
